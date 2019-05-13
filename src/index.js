@@ -11,10 +11,12 @@ const answerCall = (isAllowed, res) => {
 
 app.use(bodyParser.json());
 
-app.post('/validateNamespaceCreation', (req, res) => {
+app.use('/validateNamespaceCreation', (req, res) => {
     if (req.body.operation !== 'CREATE') {
         return answerCall(true, res);
     }
+
+    console.log(JSON.stringify(req.body, null, '  '));
 
     const user = req.body.userInfo.Username.substr(10);
     const createdNamespaceName = req.body.metadata.name;
