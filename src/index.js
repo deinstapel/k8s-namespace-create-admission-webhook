@@ -1,33 +1,70 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const https = require('https');
+const fs = require('fs');
 
 const app = express();
 
-const answerCall = (isAllowed, res) => {
+const options = {
+    cert: fs.readFileSync(process.env.CERT_CRT),
+    key: fs.readFileSync(process.env.CERT_KEY),
+};
+
+
+const answerCall = (res, isAllowed, explanation) => {
+    console.log(`Answering Request with ${isAllowed}`);
     res.json({
-        allowed: isAllowed,
+        response: {
+            allowed: isAllowed,
+            result: {
+                message: explanation,
+            },
+        },
     });
 };
 
 app.use(bodyParser.json());
 
-app.use('/validateNamespaceCreation', (req, res) => {
-    if (req.body.operation !== 'CREATE') {
-        return answerCall(true, res);
+app.use((req, res, next) => {
+    console.log('Path', req.path);
+    console.log('Method', req.method);
+    console.log('Body', JSON.stringify(req.body, null, '  '));
+
+    next();
+});
+
+// Kubernetes Readyness Probe
+app.get('/', (req, res) => {
+    res.sendStatus(200);
+});
+
+app.post('/', (req, res) => {
+    const admissionRequest = req.body.request;
+
+    if (admissionRequest.operation !== 'CREATE') {
+        return answerCall(res, true);
     }
 
-    console.log(JSON.stringify(req.body, null, '  '));
+    const userNameParts = admissionRequest.userInfo.username.split(':');
+    const userName = userNameParts[userNameParts.length - 1];
 
-    const user = req.body.userInfo.Username.substr(10);
-    const createdNamespaceName = req.body.metadata.name;
+    if (!userName.startsWith('k8s-user-')) {
+        return answerCall(res, true);
+    }
+
+    const user = userName.substr(9);
+    const createdNamespaceName = admissionRequest.object.metadata.name;
 
     const isAllowed = createdNamespaceName.startsWith(`${user}-`);
     console.log('user', user);
     console.log('namespace', createdNamespaceName);
     console.log('isAllowed', isAllowed);
 
-    return answerCall(isAllowed, res);
+    const denyExplanation = !isAllowed ? 'You are not allowed to create namespaces, which are not prefixed with your username.' : '';
+
+    return answerCall(res, isAllowed, denyExplanation);
 });
 
-app.listen(3000);
-console.log('Listening on port 3000');
+https.createServer(options, app).listen(6443, () => {
+    console.log('Created Server on 6443');
+});

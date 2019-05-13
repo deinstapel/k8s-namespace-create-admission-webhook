@@ -1,4 +1,4 @@
-FROM node:11
+FROM node:11-alpine
 
 COPY . /k8s-namespace-create-admission-webhook
 WORKDIR /k8s-namespace-create-admission-webhook
