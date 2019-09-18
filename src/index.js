@@ -41,10 +41,6 @@ app.get('/', (req, res) => {
 app.post('/', (req, res) => {
     const admissionRequest = req.body.request;
 
-    if (admissionRequest.operation !== 'CREATE') {
-        return answerCall(res, true);
-    }
-
     const userNameParts = admissionRequest.userInfo.username.split(':');
     const userName = userNameParts[userNameParts.length - 1];
 
@@ -53,14 +49,14 @@ app.post('/', (req, res) => {
     }
 
     const user = userName.substr(9);
-    const createdNamespaceName = admissionRequest.object.metadata.name;
+    const namespaceName = admissionRequest.object.metadata.name;
 
-    const isAllowed = createdNamespaceName.startsWith(`${user}-`);
+    const isAllowed = namespaceName.startsWith(`${user}-`);
     console.log('user', user);
-    console.log('namespace', createdNamespaceName);
+    console.log('namespace', namespaceName);
     console.log('isAllowed', isAllowed);
 
-    const denyExplanation = !isAllowed ? 'You are not allowed to create namespaces, which are not prefixed with your username.' : '';
+    const denyExplanation = !isAllowed ? 'You are not allowed to use namespaces, which are not prefixed with your username.' : '';
 
     return answerCall(res, isAllowed, denyExplanation);
 });
